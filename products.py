@@ -1,6 +1,3 @@
-from itertools import product
-
-
 products = [
     {'name': 'HP', 'price': 769, 'stock': 100},
     {'name': 'ASUS', 'price': 1200, 'stock': 86},
