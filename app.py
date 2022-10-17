@@ -1,6 +1,10 @@
 from crypt import methods
+from distutils.util import execute
+import string
+from unicodedata import name
 from flask import Flask, jsonify, request
 from flask_swagger_ui import get_swaggerui_blueprint
+import sqlite3
 
 from products import products
 
@@ -20,6 +24,33 @@ app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
 ### end Swagger specific ###
 
 
+def get_db_connection():
+    conn = sqlite3.connect('database.sqlite')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def execute_query(query: string):
+    conn = get_db_connection()
+    dbresult = conn.execute(query).fetchall()
+    conn.commit()
+    conn.close()
+    return dbresult
+
+
+def map_to_product(dbresult):
+    data = []
+    for p in dbresult:
+        data.append(
+            {
+                "name": p[0],
+                "price": p[1],
+                "stock": p[2]
+            }
+        )
+    return data
+
+
 @app.route('/ping', )
 def ping():
     return jsonify({'message': 'Pingeado'})
@@ -27,61 +58,45 @@ def ping():
 
 @app.route('/products', methods=['GET'])
 def get_products():
-    return jsonify(products)
+    dbproducts = execute_query('SELECT * FROM products')
+    return jsonify(map_to_product(dbproducts))
 
 
 @app.route('/products/<string:name>')
 def get_product(name):
-
-    productFound = [product for product in products if product['name'] == name]
-    if (len(productFound) == 0):
+    dbproducts = execute_query(
+        'SELECT * FROM products WHERE name LIKE "%' + name + '%"')
+    data = map_to_product(dbproducts)
+    if (len(dbproducts) == 0):
         return jsonify({'message': 'Product not found'})
-    return jsonify(productFound)
+    return jsonify(data)
 
 
 @app.route('/products', methods=['POST'])
 def create_product():
+    execute_query(
+        f"INSERT INTO Products (name, price, stock) VALUES('{request.json['name']}', {request.json['price']}, {request.json['stock']})")
 
-    newProduct = {
-        'name': request.json['name'],
-        'price': request.json['price'],
-        'stock': request.json['stock']
-    }
-
-    products.append(newProduct)
-
-    return jsonify(products)
+    dbproducts = execute_query('SELECT * FROM products')
+    return jsonify(map_to_product(dbproducts))
 
 
 @app.route('/products/<string:name>', methods=['PUT'])
 def update_product(name):
+    execute_query(
+        f"UPDATE Products SET name='{request.json['name']}', price={request.json['price']}, stock={request.json['stock']} WHERE name = '{name}'")
 
-    productFound = [product for product in products if product['name'] == name]
-
-    if len(productFound) == 0:
-        return jsonify({'message': 'Product not found'})
-
-    if len(productFound) > 1:
-        for p in productFound:
-            p['name'] = request.json['name']
-            p['price'] = request.json['price']
-            p['stock'] = request.json['stock']
-
-    return jsonify(products)
+    dbproducts = execute_query('SELECT * FROM products')
+    return jsonify(map_to_product(dbproducts))
 
 
 @app.route('/products/<string:name>', methods=['DELETE'])
 def delete_product(name):
-
-    productFound = [product for product in products if product['name'] == name]
-
-    if len(productFound) == 0:
-        return jsonify({'message': 'Product not found'})
-
-    for p in productFound:
-        products.remove(p)
-
-    return jsonify(products)
+    execute_query(
+        f"DELETE FROM Products WHERE name='{name}'")
+    
+    dbproducts = execute_query('SELECT * FROM products')
+    return jsonify(map_to_product(dbproducts))
 
 
 if __name__ == '__main__':
