@@ -1,12 +1,8 @@
 from crypt import methods
-from distutils.util import execute
 import string
-from unicodedata import name
 from flask import Flask, jsonify, request
 from flask_swagger_ui import get_swaggerui_blueprint
 import sqlite3
-
-from products import products
 
 app = Flask(__name__)
 
@@ -94,7 +90,7 @@ def update_product(name):
 def delete_product(name):
     execute_query(
         f"DELETE FROM Products WHERE name='{name}'")
-    
+
     dbproducts = execute_query('SELECT * FROM products')
     return jsonify(map_to_product(dbproducts))
 
