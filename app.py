@@ -1,11 +1,23 @@
 from crypt import methods
-from email import message
-from math import prod
 from flask import Flask, jsonify, request
+from flask_swagger_ui import get_swaggerui_blueprint
 
 from products import products
 
 app = Flask(__name__)
+
+### Swagger specific ###
+SWAGGER_URL = '/swagger'
+API_URL = '/static/swagger.json'
+SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': 'Products.API'
+    }
+)
+app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
+### end Swagger specific ###
 
 
 @app.route('/ping', )
@@ -40,11 +52,12 @@ def create_product():
 
     return jsonify(products)
 
+
 @app.route('/products/<string:name>', methods=['PUT'])
 def update_product(name):
 
     productFound = [product for product in products if product['name'] == name]
-    
+
     if len(productFound) == 0:
         return jsonify({'message': 'Product not found'})
 
